@@ -1,0 +1,94 @@
+version: "3.7"
+services:
+  rabbitmq-cloud:
+    image: deniscontini/rabbitconsulcloud:1.1
+    #hostname: "{{.Node.Hostname}}"
+    networks:
+      - rabbitcloud
+    ports:
+       - "5674:5672"
+       - "15674:15672"
+       - "1883:1883"
+      #  - "4369:4369"
+      #  - "15692:15692"
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - "node.labels.layer==cloud"
+      #     - "node.role==manager"
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=dockerClusterCookie
+
+  rabbitmq-fog:
+    image: deniscontini/rabbitconsulfog:1.1
+    #hostname: "{{.Node.Hostname}}"
+    networks:
+      - rabbitfog 
+    ports:
+       - "5673:5672"
+       - "15673:15672"
+       - "1884:1883"
+      #  - "4369:4369"
+      #  - "15692:15692"
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - "node.labels.layer==fog"
+      #     - "node.role==manager"
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=dockerClusterCookie
+
+  rabbitmq-edge:
+    image: deniscontini/rabbitconsuledge:1.1
+    #hostname: "{{.Node.Hostname}}"
+    networks:
+      - rabbitedge 
+    ports:
+       - "5672:5672"
+       - "15672:15672"
+       - "1885:1883"
+      #  - "4369:4369"
+      #  - "15692:15692"
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - "node.labels.layer==edge"
+      #     - "node.role==manager"
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=dockerClusterCookie
+  
+  consul:
+    image: consul
+    hostname: "{{.Node.Hostname}}"
+    networks:
+      - rabbitcloud
+      - rabbitfog
+      - rabbitedge
+      - consul
+    ports:
+      - 8400:8400
+      - 8500:8500
+      - 8600:53
+    deploy:
+      mode: global
+      #replicas: 1
+      placement:
+        constraints:
+          #- "node.labels.layer==consul"
+          - "node.role==manager"
+    command: [ "agent", "-server", "-bootstrap-expect=3", "-retry-max=3", "-retry-interval=10s", "-datacenter=iiot", "-join=consul", "-retry-join=consul", "-bind={{ GetInterfaceIP \"eth0\" }}", "-client=0.0.0.0", "-ui"]
+
+networks: 
+  # rabbitmq:
+  #   external: true
+  rabbitcloud:
+    external: true
+  rabbitfog:
+    external: true
+  rabbitedge:
+    external: true
+  consul:
+    external: true
